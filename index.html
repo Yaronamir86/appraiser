@@ -3,33 +3,113 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ירון אמיר – מערכת שמאות רכוש</title>
+  <title>מערכת שמאות רכוש – ירון אמיר</title>
 
-  <!-- PWA (אופציונלי) -->
   <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#0f172a" />
+  <meta name="color-scheme" content="light" />
 
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div class="appShell">
-    <aside class="side">
-      <div class="sideBrand">
-        <div class="sideTitle">מערכת שמאות רכוש</div>
-        <div class="sideSub">ירון אמיר • עבודה מקומית (ללא שרת)</div>
+  <div class="proShell" id="proShell">
+    <aside class="proSide" id="proSide">
+      <div class="brandCard">
+        <div class="brandTitle">מערכת שמאות רכוש</div>
+        <div class="brandSub">ירון אמיר </div>
       </div>
 
-      <nav class="sideNav" id="sideNav">
-        <!-- נבנה אוטומטית מהכרטיסים -->
-      </nav>
+      <div class="sideSection">
+        <div class="sideHeader">תיקים</div>
+        <div class="sideActions">
+          <button class="sideBtn" id="btnNewCase" type="button">תיק חדש</button>
+          <button class="sideBtn ghost" id="btnDashboard" type="button">דשבורד</button>
+        </div>
+      </div>
+
+      <div class="sideSection">
+        <div class="sideHeader">ניווט מהיר</div>
+        <nav class="sideNav" id="sideNav"></nav>
+
+        <div class="sideStepper" id="sideStepper">
+          <button class="sideBtn ghost" id="btnPrev" type="button">הקודם</button>
+          <button class="sideBtn" id="btnNext" type="button">הבא</button>
+        </div>
+
+        <div class="progressWrap">
+          <div class="progressMeta">
+            <span id="progressText">0%</span>
+            <span class="muted" id="progressHint">השלמת שדות</span>
+          </div>
+          <div class="progressBar"><div class="progressFill" id="progressFill"></div></div>
+        </div>
+      </div>
+
+      <div class="sideSection">
+        <div class="sideHeader">פעולות</div>
+        <div class="sideActions">
+          <button class="sideBtn ghost" id="btnExportCase" type="button">יצוא תיק (JSON)</button>
+          <button class="sideBtn danger" id="btnDeleteCase" type="button">מחיקת תיק</button>
+        </div>
+      </div>
 
       <div class="sideFooter">
-        <div class="sideHint">טיפ: אפשר “להצמיד” סעיפים דרך התפריט ולדלג מהר.</div>
+        <div class="muted">שמירה אוטומטית: כל שינוי נשמר בתיק הנוכחי.</div>
       </div>
     </aside>
 
-    <main class="main">
-      <div class="topbar">
+    <main class="proMain">
+      <header class="topBar">
+        <button class="iconBtn" id="btnToggleSide" type="button" aria-label="תפריט">☰</button>
+        <div class="topTitle">
+          <div class="t1" id="topTitle">דשבורד תיקים</div>
+          <div class="t2" id="topSub">יצירה, ניהול ומילוי טפסים</div>
+        </div>
+        <div class="topRight">
+          <span class="pill" id="pillCase">ללא תיק</span>
+          <span class="pill ok" id="pillSaved">נשמר</span>
+        </div>
+      </header>
+
+      <section class="view viewDashboard" id="viewDashboard">
+        <div class="dashGrid">
+          <div class="dashCard">
+            <div class="dashHead">
+              <div>
+                <div class="dashTitle">תיקים</div>
+                <div class="dashSub">ניהול תיקים שמורים במכשיר</div>
+              </div>
+              <button class="primaryBtn" id="dashNewCase" type="button">+ תיק חדש</button>
+            </div>
+            <div class="caseList" id="caseList"></div>
+            <div class="dashHint muted">* התיקים נשמרים בדפדפן/מכשיר. מומלץ לייצא JSON לגיבוי.</div>
+          </div>
+
+          <div class="dashCard">
+            <div class="dashTitle">מצב שטח (Mobile)</div>
+            <div class="dashSub">מסך נקי ונוח לטלפון</div>
+            <label class="toggleRow">
+              <span>הפעל מצב שטח</span>
+              <input type="checkbox" id="toggleFieldMode" />
+            </label>
+            <div class="muted" style="margin-top:8px">מצב שטח מצמצם רעש, מגדיל כפתורים וממזער תפריט.</div>
+          </div>
+
+          <div class="dashCard">
+            <div class="dashTitle">פריסה ב‑GitHub Pages</div>
+            <div class="dashSub">כדי שהאתר יעבוד ב‑/appraiser</div>
+            <ol class="miniList">
+              <li>להעלות את הקבצים לשורש הריפו (לא בתוך תיקייה).</li>
+              <li>Settings → Pages: main / root.</li>
+              <li>להיכנס לכתובת.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="view viewCase" id="viewCase" hidden>
+        <div class="caseWrap">
+          <div class="topbar">
     <div class="topbarInner">
       <div class="brand">
         <strong>ירון אמיר – מערכת שמאות רכוש (FINAL)</strong>
@@ -529,6 +609,10 @@
       </div>
     </div>
   </div>
+        </div>
+      </section>
+
+      <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
     </main>
   </div>
 
