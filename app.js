@@ -1594,8 +1594,11 @@ function coverageTableHTML(){
     try{ return JSON.parse(s); }catch(_){ return fallback; }
   }
 
-  function loadIndex(){ return safeParse(localStorage.getItem(LS_INDEX), []); }
-  function saveIndex(arr){ localStorage.setItem(LS_INDEX, JSON.stringify(arr)); }
+  function loadIndex(){
+    const v = safeParse(localStorage.getItem(LS_INDEX), []);
+    return Array.isArray(v) ? v : [];
+  }
+  function saveIndex(arr){ localStorage.setItem(LS_INDEX, JSON.stringify(Array.isArray(arr) ? arr : [])); }
   function getActiveCaseId(){ return localStorage.getItem(LS_ACTIVE) || ""; }
   function setActiveCaseId(id){ localStorage.setItem(LS_ACTIVE, id); }
   function caseKey(id){ return "YA_CASE_DATA_" + id; }
@@ -1901,6 +1904,9 @@ function coverageTableHTML(){
     const list = $("caseList");
     if(!list) return;
     const idx = loadIndex();
+    if(!Array.isArray(idx)) {
+      localStorage.setItem(LS_INDEX, "[]");
+    }
 
     if(!idx.length){
       list.innerHTML = `<div class="muted">אין תיקים עדיין. לחץ “תיק חדש”.</div>`;
