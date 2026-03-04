@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ירון אמיר – מערכת שמאות רכוש</title>
+
+  <!-- PWA (אופציונלי) -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#0f172a" />
+
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="appShell">
+    <aside class="side">
+      <div class="sideBrand">
+        <div class="sideTitle">מערכת שמאות רכוש</div>
+        <div class="sideSub">ירון אמיר • עבודה מקומית (ללא שרת)</div>
+      </div>
+
+      <nav class="sideNav" id="sideNav">
+        <!-- נבנה אוטומטית מהכרטיסים -->
+      </nav>
+
+      <div class="sideFooter">
+        <div class="sideHint">טיפ: אפשר “להצמיד” סעיפים דרך התפריט ולדלג מהר.</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+    <div class="topbarInner">
+      <div class="brand">
+        <strong>ירון אמיר – מערכת שמאות רכוש (FINAL)</strong>
+        <span>מבנה דוח ירון V1 (Header קבוע + תמונה ראשית + 8 תמונות עיקריות לפני הסיכום)</span>
+      </div>
+      <div class="actions">
+        <button class="ghost" id="btnNew">תיק חדש</button>
+        <button class="ghost" id="btnExport">ייצוא JSON</button>
+        <button class="ghost" id="btnImport">ייבוא JSON</button>
+        <button class="primary" id="btnPreview">תצוגה מקדימה</button>
+        <button class="primary" id="btnPrint">שמור ל‑PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="formView" class="wrap">
+    <!-- Card: Mode -->
+    <div class="card">
+      <h2>מסך פתיחה – בחירת סוג שומה</h2>
+      <p class="sub">בחר ענף עבודה. המערכת תתאים את הטופס והדוח בהתאם. (תמיד 3 ענפים: פרטי / עבור חברת ביטוח / מס רכוש)</p>
+      <div class="row">
+        <label class="pill"><input type="radio" name="mode" value="private"/> שומה פרטית</label>
+        <label class="pill"><input type="radio" name="mode" value="insurance"/> שומה עבור חברת ביטוח</label>
+        <label class="pill"><input type="radio" name="mode" value="tax"/> שמאות מס רכוש</label>
+        <span class="muted mini" id="modeHint"></span>
+      </div>
+    </div>
+
+    <!-- Card: Basic -->
+    <div class="card">
+      <h2>נתונים בסיסיים</h2>
+      <p class="sub">הטבלה בדוח תציג נתונים בסיסיים בלבד, אבל כל הנתונים כאן משמשים להפקת פסקאות וטבלאות בהמשך.</p>
+      <div class="twoCol">
+        <div class="field"><label>שם מלא</label><input id="fullName" placeholder="שם ושם משפחה"/></div>
+        <div class="field"><label>ת״ז / ח״פ</label><input id="idNumber" placeholder="לדוגמה: 123456789"/></div>
+        <div class="field"><label>כתובת הנכס</label><input id="address" placeholder="רחוב, מספר, עיר"/></div>
+<div class="field"><label>טלפון (לשימוש פנימי)</label><input id="phone" placeholder="05X-XXXXXXX"/></div>
+        <div class="field"><label>תאריך מקרה</label><input id="eventDate" type="date"/></div>
+        <div class="field"><label>תאריך ביקור</label><input id="visitDate" type="date"/></div>
+      </div>
+      <div class="hr"></div>
+      <div id="insuranceMetaWrap" class="twoCol">
+        <div class="field"><label>חברת ביטוח (רלוונטי בעיקר למסלול “עבור חברת ביטוח”)</label><input id="insurerName" placeholder="לדוגמה: הראל"/></div>
+        <div class="field"><label>מספר פוליסה (בפרטית לא חובה)</label><input id="policyNumber" placeholder="—"/></div>
+      </div>
+      <p class="stickyNote">אין שדות חובה שחוסמים המשך. אפשר תמיד להמשיך ולחזור להשלים.</p>
+    </div>
+
+    
+    <!-- Card: Property Features -->
+    <div class="card">
+      <h2>מאפייני הנכס</h2>
+      <p class="sub">נתונים תיאוריים של הנכס כפי שנצפו/נמסרו. כל שדה ניתן לעריכה ידנית בדוח.</p>
+      <div class="twoCol">
+        <div class="field">
+          <label>סוג נכס (כללי)</label>
+          <select id="propertyKind">
+            <option value="residential">מגורים</option>
+            <option value="business">עסק (חנות/משרד)</option>
+            <option value="warehouse">מחסן/תעשיה</option>
+            <option value="other">אחר</option>
+          </select>
+        </div>
+
+        <div class="field"><label>שטח (מ״ר)</label><input id="areaSqm" class="num" inputmode="decimal" placeholder="לדוגמה: 80"/></div>
+
+        <div class="field">
+          <label>סוג מבנה / שימוש (חופשי)</label>
+          <input id="propertyType" placeholder="לדוגמה: דירה, בית פרטי, חנות, משרד..."/>
+        </div>
+
+        <div class="field"><label>שנת בנייה</label><input id="buildYear" class="num" inputmode="numeric" placeholder="לדוגמה: 2008"/></div>
+
+        <div class="field">
+          <label>חומר בנייה</label>
+          <select id="buildMaterial">
+            <option value="">—</option>
+            <option value="concrete">בטון</option>
+            <option value="blocks">בלוקים</option>
+            <option value="palkal">פל‑קל</option>
+            <option value="wood">עץ</option>
+            <option value="steel">פלדה</option>
+            <option value="other">אחר</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>מצב הנכס לפני האירוע</label>
+          <select id="preEventCondition">
+            <option value="">—</option>
+            <option value="good">תקין</option>
+            <option value="reasonable">בלאי סביר</option>
+            <option value="poor">ליקויים/בלאי משמעותי</option>
+            <option value="unknown">לא ידוע</option>
+            <option value="na">לא רלוונטי</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+<!-- Card: Coverage (hidden for tax) -->
+    <div class="card" id="cardCoverage">
+      <h2>תכולת ביטוח / כיסויים</h2>
+      <p class="sub">רלוונטי לשומה פרטית ולשומה מטעם החברה. במס רכוש הכרטיס מושחר/מוסתר.</p>
+
+      <div class="grid" style="align-items:start">
+        <div class="card" style="grid-column:span 6">
+          <h2 style="margin-bottom:8px">מבנה</h2>
+          <div class="twoCol">
+            <div class="field"><label>סכום ביטוח</label><input id="covB_insured" class="num" inputmode="decimal" placeholder="0"/></div>
+            <div class="field"><label>שווי בפועל</label><input id="covB_actual" class="num" inputmode="decimal" placeholder="0"/></div>
+            <div class="field"><label>השתתפות עצמית</label><input id="covB_deduct" class="num" inputmode="decimal" placeholder="0"/></div>
+            <div class="field"><label>בדיקת תת‑ביטוח</label>
+              <select id="covB_check">
+                <option value="auto">חישוב אוטומטי</option>
+                <option value="forceNo">אין תת‑ביטוח</option>
+                <option value="forceYes">קיים תת‑ביטוח</option>
+              </select>
+            </div>
+          </div>
+          <div class="mini muted" id="covB_ratio"></div>
+        </div>
+
+        <div class="card" style="grid-column:span 6">
+          <h2 style="margin-bottom:8px">תכולה</h2>
+          <div class="twoCol">
+            <div class="field"><label>סכום ביטוח</label><input id="covC_insured" class="num" inputmode="decimal" placeholder="0"/></div>
+            <div class="field"><label>שווי בפועל</label><input id="covC_actual" class="num" inputmode="decimal" placeholder="0"/></div>
+            <div class="field"><label>השתתפות עצמית</label><input id="covC_deduct" class="num" inputmode="decimal" placeholder="0"/></div>
+            <div class="field"><label>בדיקת תת‑ביטוח</label>
+              <select id="covC_check">
+                <option value="auto">חישוב אוטומטי</option>
+                <option value="forceNo">אין תת‑ביטוח</option>
+                <option value="forceYes">קיים תת‑ביטוח</option>
+              </select>
+            </div>
+          </div>
+          <div class="mini muted" id="covC_ratio"></div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <label class="pill"><input type="checkbox" id="extThirdParty"> הרחבה: צד ג׳</label>
+        <label class="pill"><input type="checkbox" id="extLossProfit"> הרחבה: אובדן רווחים</label>
+        <label class="pill"><input type="checkbox" id="bizVAT"> הנכס עסקי/מקזז מע״מ</label>
+        <label class="pill" id="pillPlumber"><input type="checkbox" id="plumberArrangement"> שרברב בהסדר (למסלול חברת ביטוח)</label>
+      </div>
+
+      <p class="stickyNote">במסלול “שרברב בהסדר” — סעיף התיקון הישיר של השרברב יירשם “לביצוע” אך ללא תמחור.</p>
+    </div>
+
+    <!-- Card: Event/Docs -->
+    <div class="card">
+      <h2>פרטי אירוע ומסמכים</h2>
+      <p class="sub">מסמכים: תלונה כברירת מחדל. דוח כבאות – אופציה. במס רכוש: אירוע קבוע ותת‑סיווג.</p>
+      <div class="twoCol">
+        <div class="field">
+          <label>סוג אירוע</label>
+          <select id="eventType">
+            <option value="water">נזקי מים/צנרת</option>
+            <option value="fire">שריפה/עשן/פיח</option>
+            <option value="burglary">פריצה/גניבה</option>
+            <option value="taxEvent">מס רכוש</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>תת‑סיווג (או “אחר” חופשי)</label>
+          <select id="eventSubType">
+            <option value="">—</option>
+            <option value="general">כללי</option>
+            <option value="direct">פגיעה ישירה</option>
+            <option value="blast">הדף</option>
+            <option value="secondary">נזק משני</option>
+            <option value="shrapnel">רסיסים</option>
+            <option value="other">אחר (שדה חופשי)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" id="eventSubTypeOtherWrap" style="margin-top:10px" class="hidden">
+        <label>תת‑סיווג – אחר (חופשי)</label>
+        <input id="eventSubTypeOther" placeholder="כתוב חופשי"/>
+      </div>
+      <div class="hr"></div>
+      <div class="row">
+        <label class="pill"><input type="checkbox" id="docPolice" checked> קיימת תלונה במשטרה (ברירת מחדל)</label>
+        <label class="pill"><input type="checkbox" id="docFire"> קיים דוח כבאות (אופציה)</label>
+        <span class="muted mini">המלל בדוח יתאים את עצמו.</span>
+      </div>
+
+      <div class="hr"></div>
+      <div class="field">
+        <label>הצהרת שמאי + מטרת ההגעה והיקף הבדיקה (אוטומטי, ניתן לעריכה)</label>
+        <textarea id="openingOverride" placeholder="אם תשאיר ריק – ייווצר אוטומטית. אם תמלא – זה יופיע בדוח במקום האוטומטי."></textarea>
+        <div class="mini muted">טיפ: אפשר לכתוב כאן ניסוח קבוע ולערוך רק פרטים.</div>
+      </div>
+    </div>
+
+    <!-- Card: Circumstances (client story) -->
+    <div class="card">
+      <h2>נסיבות המקרה (לדברי המבוטח/השוהה בנכס)</h2>
+      <p class="sub">המערכת שומרת גם את שאלות ההמשך ומייצרת פסקה רציפה. ניתן תמיד לערוך ידנית.</p>
+
+      <div class="twoCol">
+        <div class="field"><label>תיאור כללי (חופשי)</label><textarea id="circFree" placeholder="מה סיפר המבוטח/דייר?"></textarea></div>
+        <div class="field" id="waterFollowWrap"><label>בנזקי מים – שאלות המשך</label>
+          <div class="row" style="margin-bottom:8px">
+            <label class="pill"><input type="checkbox" id="waterPrevRepair"> האם בוצע תיקון קודם?</label>
+            <label class="pill"><input type="checkbox" id="waterRecentPlumber"> האם הוזמן שרברב בחודשים האחרונים?</label>
+          </div>
+          <textarea id="waterFollowText" placeholder="אם כן – מי הזמין/מטעם מי ומה הסיבה?"></textarea>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+      <div class="field">
+        <label>נסיבות המקרה – Override (אם מלא, יגבר על הטקסט האוטומטי)</label>
+        <textarea id="circOverride" placeholder="ריק = אוטומטי."></textarea>
+      </div>
+    </div>
+
+    <!-- Card: Areas + Damage signs -->
+    <div class="card">
+      <h2>אזורים שנפגעו + תתי פגיעה</h2>
+      <p class="sub">סמן אזורים, ואז סמן תתי‑פגיעה לכל אזור. המנוע ייצור תיאור דחוס (לא מנופח). אפשר להוסיף חדרים נוספים (חדר שינה/ילדים ממוספר).</p>
+
+      <div class="twoCol">
+        <div class="card" style="box-shadow:none">
+          <h2 style="margin-bottom:6px">בחירת אזורים</h2>
+          <div class="row mini muted" style="margin-bottom:8px">
+            <span class="tag">מגורים: תקרה, חדר שירות, חדרים דינמיים</span>
+            <span class="tag">עסק: חללים מסחריים/משרד/מחסן</span>
+          </div>
+          <div id="areasList" class="row" style="gap:8px"></div>
+          <div class="hr"></div>
+          <div class="row">
+            <button class="smallBtn" id="btnAddBedroom">+ חדר שינה נוסף</button>
+            <button class="smallBtn" id="btnAddKids">+ חדר ילדים נוסף</button>
+            <button class="smallBtn" id="btnAddCustomArea">+ אזור חופשי</button>
+          </div>
+          <div class="field" id="customAreaWrap" style="margin-top:10px;display:none">
+            <label>שם אזור חופשי</label>
+            <div class="row">
+              <input id="customAreaName" placeholder="לדוגמה: גג/חניה/חדר שרתים"/>
+              <button class="smallBtn" id="btnConfirmCustomArea">הוסף</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="box-shadow:none">
+          <h2 style="margin-bottom:6px">תתי פגיעה לפי סוג האירוע</h2>
+          <div class="mini muted">הסימונים מוצגים עבור אזורים שנבחרו. לכל אזור ניתן לבחור מספר תתי‑פגיעה.</div>
+          <div class="hr"></div>
+          <div id="damageSignsEditor"></div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+      <div class="field">
+        <label>תיאור הנזק – Override (ריק = אוטומטי)</label>
+        <textarea id="damageOverride" placeholder="כאן אפשר לכתוב ניסוח ידני, אם תרצה."></textarea>
+      </div>
+    </div>
+
+    <!-- Card: Findings / Investigation -->
+    <div class="card">
+      <h2>ממצאים מחקירת האירוע / בדיקות</h2>
+      <p class="sub">כאן רושמים מה נבדק ונמצא בשטח (לא פעולות כתב כמויות). בנזקי מים: אינדיקציה ללחות רק אם נמדד חריג.</p>
+
+      <div class="row">
+        <label class="pill"><input type="radio" name="damageEvidence" value="yes"> יש ממצאי פגיעה</label>
+        <label class="pill"><input type="radio" name="damageEvidence" value="no"> אין ממצאי פגיעה</label>
+        <label class="pill"><input type="radio" name="damageEvidence" value="na" checked> לא רלוונטי</label>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="twoCol">
+        <div class="field">
+          <label>בדיקות לחות</label>
+          <div class="row">
+            <label class="pill"><input type="checkbox" id="moistMeter"> בוצעה בדיקה עם מד לחות (שטח)</label>
+            <label class="pill"><input type="checkbox" id="moistAbnormal"> התקבלה תוצאה חריגה</label>
+            <label class="pill"><input type="checkbox" id="moistLab"> בוצעה/תבוצע בדיקת מעבדה (מכון התקנים)</label>
+          </div>
+          <textarea id="findingsMoistNote" placeholder="הערה חופשית (לדוגמה: נקודת מדידה/ערכים/מיקום)."></textarea>
+          <div class="mini muted">אם מסומן “תוצאה חריגה” — הדוח ינוסח כ“אינדיקציה לרטיבות/לחות…”.</div>
+        </div>
+        <div class="field">
+          <label>ממצאים/חקירה – חופשי</label>
+          <textarea id="findingsFree" placeholder="לדוגמה: נזקי פיח/עשן/מי כיבוי, סימני חדירה, התאמות לגרסה וכו’."></textarea>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="field">
+        <label>ממצאים – Override (ריק = אוטומטי משולב)</label>
+        <textarea id="findingsOverride" placeholder="אם תרצה לנסח כאן ידנית."></textarea>
+      </div>
+    </div>
+
+    <!-- Card: BOQ -->
+    <div class="card">
+      <h2>כתב כמויות (מבנה / תכולה / כללי)</h2>
+      <p class="sub">הוסף שורות בצורה נקייה. במסלול חברת ביטוח: כינון/שיפוי (פחות שליש) אוטומטי + אפשרות טור “תביעה”. מס רכוש: שיפוי בלבד (עם פחת לפי צורך).</p>
+
+      <div class="row">
+        <label class="pill" id="pillClaimCol"><input type="checkbox" id="enableClaimColumn"> להציג טור “תביעה” (אם יש שמאי פרטי ללקוח)</label>
+        <label class="pill" id="pillFullScope"><input type="checkbox" id="privateWideScope"> פרטית – דרישה רחבה (למשל קיר/רצפה מלאה)</label>
+      </div>
+
+      <div class="hr"></div>
+
+      <h2 style="margin:0 0 8px 0;font-size:14px">מבנה</h2>
+      <div class="tblWrap">
+        <table id="boqBuildingTable">
+          <thead><tr id="boqBuildingHead"></tr></thead>
+          <tbody id="boqBuildingBody"></tbody>
+        </table>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="smallBtn" id="btnAddBoqBuilding">+ הוסף שורה (מבנה)</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <h2 style="margin:0 0 8px 0;font-size:14px">תכולה</h2>
+      <div class="tblWrap">
+        <table id="boqContentsTable">
+          <thead><tr id="boqContentsHead"></tr></thead>
+          <tbody id="boqContentsBody"></tbody>
+        </table>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="smallBtn" id="btnAddBoqContents">+ הוסף שורה (תכולה)</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <h2 style="margin:0 0 8px 0;font-size:14px">כללי (דינמי)</h2>
+      <p class="sub">כאן יופיעו סעיפים כלליים לפי צורך: ניקיון לפני מסירה, פינוי פסולת, שינוע תכולה (אם אין ביטוח תכולה), ייבוש מצעים/החלפת מצעים וכו’.</p>
+
+      <div class="row">
+        <label class="pill"><input type="checkbox" id="svcCleaning"> ניקיון לפני מסירה</label>
+        <label class="pill"><input type="checkbox" id="svcWaste"> פינוי פסולת</label>
+        <label class="pill"><input type="checkbox" id="svcDumpster"> מכולה לאתר מורשה</label>
+        <label class="pill"><input type="checkbox" id="svcMoveContents"> שינוע תכולה בתוך המבנה (1500 ₪ אם אין ביטוח תכולה)</label>
+        <label class="pill"><input type="checkbox" id="svcDrying"> ייבוש מצעים / החלפת מצעים (נזקי מים מתחת לריצוף)</label>
+      </div>
+
+      <div class="field" style="margin-top:10px">
+        <label>הערה לסעיפים כלליים (חופשי)</label>
+        <textarea id="svcNote" placeholder="הערות/התאמות מיוחדות (רנדומלי: איסוף פסולת, פירוק תכולה, פסולת רהיטים בשריפה וכו’)."></textarea>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="field">
+        <label>כתב כמויות – Override (ריק = טבלאות אוטומטיות)</label>
+        <textarea id="boqOverride" placeholder="בדרך כלל לא נדרש, אבל קיים למקרה חריג."></textarea>
+      </div>
+    </div>
+
+    <!-- Card: Explanations -->
+    <div class="card">
+      <h2>ביאורים והסברים להערכה</h2>
+      <p class="sub">פסקה בסגנון א‑ח לפי הדוגמה שסיפקת. נוצרת אוטומטית לפי סימונים/מסלול (כולל מע״מ, תת‑ביטוח וכו’), וניתנת לעריכה מלאה.</p>
+      <div class="field">
+        <label>הסברים להערכה – Override (ריק = אוטומטי)</label>
+        <textarea id="explainOverride" placeholder="ריק = המערכת תייצר פסקה א‑ח."></textarea>
+      </div>
+    </div>
+
+    <!-- Card: Summary -->
+    <div class="card">
+      <h2>סיכום מספרי + המלצות + חתימה</h2>
+      <p class="sub">הסיכום משתנה לפי ענף: פרטית (תביעה), חברת ביטוח (כינון/שיפוי + אופציה לתביעה), מס רכוש (שיפוי בלבד + פחת לפי צורך).</p>
+
+      <div class="twoCol">
+        <div class="field">
+          <label>המלצות שמאי (פסקה מסכמת)</label>
+          <textarea id="recoText" placeholder="לדוגמה: מומלץ לבצע תיקון בהתאם לכתב הכמויות, להציג אסמכתאות נוספות וכו’."></textarea>
+        </div>
+        <div class="field">
+          <label>חתימה / סיום (חופשי)</label>
+          <textarea id="signText" placeholder="לדוגמה: בכבוד רב, ירון אמיר – שמאי רכוש."></textarea>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="twoCol">
+        <div class="field">
+          <label>סכום תביעה (לפרטית / אופציונלי)</label>
+          <input id="sumClaim" class="num" inputmode="decimal" placeholder="0"/>
+        </div>
+        <div class="field">
+          <label>הערת סיכום (חופשי)</label>
+          <input id="sumNote" placeholder="לדוגמה: הערכים מוצגים בהתאם לתנאי הפוליסה."/>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="field">
+        <label>סיכום – Override (אם תרצה לנסח ידנית את כל הסיכום)</label>
+        <textarea id="summaryOverride" placeholder="ריק = טבלאות/טקסט ייבנו לפי המסלול."></textarea>
+      </div>
+    </div>
+
+    <!-- Card: Photos -->
+    <div class="card">
+      <h2>תמונות</h2>
+      <p class="sub">תמונה ראשית אחת (אופציונלי) + עד 8 תמונות עיקריות (מופיעות לפני הסיכום בדוח). לכל תמונה כיתוב ומחיקה. תמונות נוספות ניתן לציין שיוגשו כקובץ חיצוני.</p>
+
+      <div class="grid">
+        <div class="card" style="grid-column:span 6;box-shadow:none">
+          <h2 style="margin-bottom:6px">תמונה ראשית</h2>
+          <div class="row">
+            <div class="field" style="flex:1">
+              <label>צלם (מובייל)</label>
+              <input id="heroCam" type="file" accept="image/*" capture="environment"/>
+            </div>
+            <div class="field" style="flex:1">
+              <label>בחר קובץ</label>
+              <input id="heroFile" type="file" accept="image/*"/>
+            </div>
+          </div>
+          <div class="hr"></div>
+          <div class="twoCol">
+            <div class="thumb" id="heroThumb"><span class="muted mini">אין תמונה</span></div>
+            <div class="field">
+              <label>כיתוב לתמונה הראשית</label>
+              <input id="heroCaption" placeholder="לדוגמה: מבט כללי על מוקד הנזק"/>
+              <div class="row" style="margin-top:10px">
+                <button class="danger" id="btnHeroDelete" type="button">מחק תמונה ראשית</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column:span 6;box-shadow:none">
+          <h2 style="margin-bottom:6px">8 תמונות עיקריות</h2>
+          <div class="row">
+            <div class="field" style="flex:1">
+              <label>צלם (מובייל)</label>
+              <input id="galCam" type="file" accept="image/*" capture="environment" multiple/>
+            </div>
+            <div class="field" style="flex:1">
+              <label>בחר קבצים</label>
+              <input id="galFile" type="file" accept="image/*" multiple/>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="photosGrid" id="galleryGrid"></div>
+
+          <div class="mini muted" style="margin-top:10px">
+            הערה: יתר התמונות יוגשו כקובץ חיצוני. בדוח ניתן לציין זאת בסעיף “תיעוד”.
+          </div>
+
+          <div class="field" style="margin-top:10px">
+            <label>הערת תיעוד תמונות (חופשי)</label>
+            <input id="photosNote" placeholder="לדוגמה: מצורף קובץ תמונות נוסף הכולל תיעוד מלא מהשטח."/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>שמירה פנימית</h2>
+      <p class="sub">המערכת שומרת אוטומטית מקומית (LocalStorage). ניתן לייצא/לייבא JSON לגיבוי. אין תלות ברשת.</p>
+      <div class="mini muted" id="saveStatus">—</div>
+    </div>
+  </div>
+
+  <!-- REPORT VIEW -->
+  <div id="reportView" class="wrap">
+    <div class="reportWrap">
+      <div class="reportHeader">
+        ירון אמיר – שמאי רכוש
+        <span class="mini">דוח שמאות – הפקה אוטומטית</span>
+      </div>
+
+      <div class="reportPad">
+        <div class="reportActions row" style="justify-content:space-between;margin-bottom:10px">
+          <button class="secondary" id="btnBack">חזור לעריכה</button>
+          <div class="row">
+            <button class="primary" id="btnPrint2">שמור ל‑PDF</button>
+          </div>
+        </div>
+
+        <div id="reportContent"></div>
+      </div>
+    </div>
+  </div>
+    </main>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
