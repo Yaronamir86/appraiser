@@ -1,0 +1,9 @@
+{
+  "name": "מערכת שמאות רכוש – ירון אמיר",
+  "short_name": "שמאות רכוש",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f8",
+  "theme_color": "#0f172a",
+  "icons": []
+}
