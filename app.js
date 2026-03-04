@@ -1566,121 +1566,458 @@ function coverageTableHTML(){
 })();
 
 
-/* ===== Nav enhancement (סגנון work-system) ===== */
+/* ===== PRO: Case Manager + Dashboard + Step Navigation + Autosave ===== */
 (() => {
   "use strict";
 
-  function $(id){ return document.getElementById(id); }
+  const LS_INDEX = "YA_CASE_INDEX_V1";
+  const LS_ACTIVE = "YA_ACTIVE_CASE_V1";
+  const LS_FIELD_MODE = "YA_FIELD_MODE_V1";
 
-  // תן לכל כרטיס "סעיף" שם והפוך לעוגן.
-  // אם כבר יש כותרת h2 בתוך .card — נשתמש בה.
+  const $ = (id) => document.getElementById(id);
+
+  function nowISO(){ return new Date().toISOString(); }
+  function uid(){
+    return (crypto?.randomUUID ? crypto.randomUUID() : ("c_" + Math.random().toString(16).slice(2) + Date.now().toString(16))).slice(0, 36);
+  }
+
+  function toast(msg){
+    const t = $("toast");
+    if(!t) return;
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toast._tm);
+    toast._tm = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+
+  function safeParse(s, fallback){
+    try{ return JSON.parse(s); }catch(_){ return fallback; }
+  }
+
+  function loadIndex(){ return safeParse(localStorage.getItem(LS_INDEX), []); }
+  function saveIndex(arr){ localStorage.setItem(LS_INDEX, JSON.stringify(arr)); }
+  function getActiveCaseId(){ return localStorage.getItem(LS_ACTIVE) || ""; }
+  function setActiveCaseId(id){ localStorage.setItem(LS_ACTIVE, id); }
+  function caseKey(id){ return "YA_CASE_DATA_" + id; }
+
+  function ensureCaseIndexHas(id){
+    const idx = loadIndex();
+    if(idx.some(x => x.id === id)) return idx;
+    const item = { id, name: "תיק ללא שם", createdAt: nowISO(), updatedAt: nowISO() };
+    idx.unshift(item);
+    saveIndex(idx);
+    return idx;
+  }
+
+  function updateIndexMeta(id, patch){
+    const idx = loadIndex();
+    const i = idx.findIndex(x => x.id === id);
+    if(i === -1) return;
+    idx[i] = { ...idx[i], ...patch, updatedAt: nowISO() };
+    saveIndex(idx);
+  }
+
+  function deleteCase(id){
+    const idx = loadIndex().filter(x => x.id !== id);
+    saveIndex(idx);
+    localStorage.removeItem(caseKey(id));
+    if(getActiveCaseId() === id) setActiveCaseId("");
+  }
+
+  function exportCase(id){
+    const idx = loadIndex();
+    const meta = idx.find(x => x.id === id) || { id, name:"תיק", createdAt:null, updatedAt:null };
+    const data = safeParse(localStorage.getItem(caseKey(id)), {});
+    const blob = new Blob([JSON.stringify({ meta, data }, null, 2)], { type:"application/json" });
+    const a = document.createElement("a");
+    const dt = new Date().toISOString().slice(0,10);
+    a.href = URL.createObjectURL(blob);
+    a.download = `${meta.name || "case"}_${dt}.json`.replace(/[^\w\u0590-\u05FF\-\.]+/g, "_");
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  function setSavedPill(state){
+    const pill = $("pillSaved");
+    if(!pill) return;
+    pill.textContent = state === "dirty" ? "לא נשמר" : "נשמר";
+    pill.classList.toggle("warn", state === "dirty");
+    pill.classList.toggle("ok", state !== "dirty");
+  }
+
+  function collectFormSnapshot(){
+    const root = document.getElementById("formView") || document.getElementById("viewCase");
+    if(!root) return {};
+    const snap = {};
+    const fields = root.querySelectorAll("input, select, textarea");
+    fields.forEach((el) => {
+      if(!el.name && !el.id) return;
+      const key = (el.name || el.id).trim();
+      if(!key) return;
+
+      if(el.type === "checkbox"){
+        snap[key] = !!el.checked;
+      }else if(el.type === "radio"){
+        if(el.checked) snap[key] = el.value;
+      }else if(el.type === "file"){
+        // skip
+      }else{
+        snap[key] = el.value;
+      }
+    });
+
+    const details = root.querySelectorAll("details[id]");
+    details.forEach(d => snap["__details__" + d.id] = d.open ? 1 : 0);
+
+    return snap;
+  }
+
+  function applyFormSnapshot(snap){
+    const root = document.getElementById("formView") || document.getElementById("viewCase");
+    if(!root || !snap) return;
+
+    const fields = root.querySelectorAll("input, select, textarea");
+    fields.forEach(el => {
+      const key = (el.name || el.id || "").trim();
+      if(!key || !(key in snap)) return;
+
+      if(el.type === "checkbox"){
+        el.checked = !!snap[key];
+      }else if(el.type === "radio"){
+        el.checked = (String(el.value) === String(snap[key]));
+      }else if(el.type === "file"){
+        // skip
+      }else{
+        el.value = snap[key] ?? "";
+      }
+      el.dispatchEvent(new Event("input", { bubbles:true }));
+      el.dispatchEvent(new Event("change", { bubbles:true }));
+    });
+
+    const details = root.querySelectorAll("details[id]");
+    details.forEach(d => {
+      const k = "__details__" + d.id;
+      if(k in snap) d.open = !!snap[k];
+    });
+  }
+
+  let saveTimer = null;
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    setSavedPill("dirty");
+    saveTimer = setTimeout(saveActiveCase, 450);
+  }
+
+  function saveActiveCase(){
+    const id = getActiveCaseId();
+    if(!id) return;
+    const snap = collectFormSnapshot();
+    localStorage.setItem(caseKey(id), JSON.stringify(snap));
+    updateIndexMeta(id, {});
+    setSavedPill("ok");
+  }
+
+  function showDashboard(){
+    $("viewDashboard").hidden = false;
+    $("viewCase").hidden = true;
+    $("topTitle").textContent = "דשבורד תיקים";
+    $("topSub").textContent = "יצירה, ניהול ומילוי טפסים";
+    $("pillCase").textContent = "ללא תיק";
+    $("sideNav").innerHTML = "";
+    $("btnExportCase").disabled = true;
+    $("btnDeleteCase").disabled = true;
+    $("btnPrev").disabled = true;
+    $("btnNext").disabled = true;
+    updateProgressUI(0,0);
+  }
+
+  function showCase(id){
+    $("viewDashboard").hidden = true;
+    $("viewCase").hidden = false;
+
+    const idx = ensureCaseIndexHas(id);
+    const meta = idx.find(x => x.id === id);
+    $("topTitle").textContent = meta?.name || "תיק";
+    $("topSub").textContent = "מילוי טופס והפקת דוח";
+    $("pillCase").textContent = meta?.name || "תיק";
+    $("btnExportCase").disabled = false;
+    $("btnDeleteCase").disabled = false;
+    $("btnPrev").disabled = false;
+    $("btnNext").disabled = false;
+
+    buildNav();
+
+    const snap = safeParse(localStorage.getItem(caseKey(id)), null);
+    if(snap) applyFormSnapshot(snap);
+
+    attachAutosave();
+    setTimeout(updateProgress, 200);
+  }
+
+  let sections = [];
+  let activeIdx = 0;
+  let autosaveAttached = false;
+
   function buildNav(){
     const nav = $("sideNav");
     if(!nav) return;
-
     const formView = document.getElementById("formView");
     if(!formView) return;
 
-    const cards = Array.from(formView.querySelectorAll(".card"))
-      // לא להכניס כרטיסים פנימיים (כמו כרטיסי המשנה בתוך כיסוי)
-      .filter(c => c.closest("#formView") && c.parentElement && c.parentElement.id === "formView");
+    let cards = Array.from(formView.children).filter(el => el.classList && el.classList.contains("card"));
+    if(!cards.length) cards = Array.from(formView.querySelectorAll(":scope > .card"));
 
-    // fallback: אם המבנה השתנה, ניקח רק כרטיסים עם h2 ברמה הראשונה
-    const topCards = cards.length ? cards : Array.from(formView.children).filter(el => el.classList && el.classList.contains("card"));
-
-    const items = [];
-    topCards.forEach((card, idx) => {
+    sections = cards.map((card, i) => {
       const h2 = card.querySelector(":scope > h2");
-      const title = (h2?.textContent || "").trim() || `סעיף ${idx+1}`;
-
-      // id יציב לעוגן
-      const id = card.id || ("sec_" + (idx+1));
+      const title = (h2?.textContent || "").trim() || `סעיף ${i+1}`;
+      const id = card.id || ("sec_" + (i+1));
       card.id = id;
       card.dataset.section = "1";
-
-      items.push({ id, title, idx: idx+1 });
+      return { id, title, i };
     });
 
     nav.innerHTML = "";
-    items.forEach(it => {
-      const el = document.createElement("div");
-      el.className = "navItem";
-      el.setAttribute("role","button");
-      el.tabIndex = 0;
-      el.innerHTML = `<div>
-        <div class="t">${escapeHtml(it.title)}</div>
-        <div class="k">סעיף ${it.idx}</div>
-      </div>
-      <div class="k">↩</div>`;
-
-      const go = () => {
-        const target = document.getElementById(it.id);
-        if(!target) return;
-        target.scrollIntoView({ behavior:"smooth", block:"start" });
-      };
-
-      el.addEventListener("click", go);
-      el.addEventListener("keydown", (e) => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); go(); } });
-
-      nav.appendChild(el);
+    sections.forEach((s, i) => {
+      const item = document.createElement("div");
+      item.className = "navItem";
+      item.tabIndex = 0;
+      item.innerHTML = `<div><div class="t">${escapeHtmlSafe(s.title)}</div><div class="k">סעיף ${i+1}</div></div><div class="k">↩</div>`;
+      const go = () => { activeIdx = i; scrollToSection(i); };
+      item.addEventListener("click", go);
+      item.addEventListener("keydown", (e) => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); }});
+      nav.appendChild(item);
     });
 
-    // Highlight current section on scroll (פשוט ויציב)
-    const navItems = Array.from(nav.querySelectorAll(".navItem"));
-    const observers = [];
-
+    const navItems = () => Array.from(nav.querySelectorAll(".navItem"));
     const io = new IntersectionObserver((entries) => {
-      // entry.isIntersecting can be multiple; choose the one closest to top
-      const visible = entries.filter(e => e.isIntersecting).sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if(!visible) return;
-      const id = visible.target.id;
-      navItems.forEach((ni, i) => ni.classList.toggle("active", items[i].id === id));
-    }, { root: null, rootMargin: "-35% 0px -60% 0px", threshold: [0.05, 0.15, 0.3] });
+      const v = entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+      if(!v) return;
+      const id = v.target.id;
+      const i = sections.findIndex(s => s.id === id);
+      if(i >= 0){
+        activeIdx = i;
+        navItems().forEach((ni, idx) => ni.classList.toggle("active", idx === i));
+      }
+    }, { root:null, rootMargin:"-35% 0px -60% 0px", threshold:[0.05,0.2,0.35] });
 
-    items.forEach(it => {
-      const target = document.getElementById(it.id);
-      if(target) io.observe(target);
+    sections.forEach(s => { const el = document.getElementById(s.id); if(el) io.observe(el); });
+    navItems().forEach((ni, idx) => ni.classList.toggle("active", idx === 0));
+  }
+
+  function scrollToSection(i){
+    const s = sections[i];
+    if(!s) return;
+    document.getElementById(s.id)?.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+  function stepNext(){ if(!sections.length) return; activeIdx = Math.min(activeIdx+1, sections.length-1); scrollToSection(activeIdx); }
+  function stepPrev(){ if(!sections.length) return; activeIdx = Math.max(activeIdx-1, 0); scrollToSection(activeIdx); }
+
+  function updateProgressUI(done, total){
+    const pct = total ? Math.round((done/total)*100) : 0;
+    $("progressFill").style.width = pct + "%";
+    $("progressText").textContent = pct + "%";
+  }
+
+  function isFieldCountable(el){
+    if(!el) return false;
+    if(el.type === "file") return false;
+    if(el.disabled) return false;
+    return ["INPUT","SELECT","TEXTAREA"].includes(el.tagName);
+  }
+
+  function fieldHasValue(el){
+    if(el.type === "checkbox") return !!el.checked;
+    const v = (el.value ?? "").toString().trim();
+    return v.length > 0;
+  }
+
+  function updateProgress(){
+    const formView = document.getElementById("formView");
+    if(!formView) return;
+    const els = Array.from(formView.querySelectorAll("input, select, textarea")).filter(isFieldCountable);
+
+    const radios = els.filter(e => e.type === "radio" && e.name);
+    const radioNames = Array.from(new Set(radios.map(r => r.name)));
+
+    let total = 0, done = 0;
+
+    els.filter(e => e.type !== "radio").forEach(e => {
+      total++;
+      if(fieldHasValue(e)) done++;
     });
-    observers.push(io);
 
-    // אם נכנסים לתצוגת דוח, ננטרל הדגשה
-    const reportView = document.getElementById("reportView");
-    const formToggle = () => {
-      const inReport = reportView && getComputedStyle(reportView).display !== "none";
-      nav.style.opacity = inReport ? "0.4" : "1";
-      nav.style.pointerEvents = inReport ? "none" : "auto";
-    };
-    const mo = new MutationObserver(formToggle);
-    if(reportView) mo.observe(reportView, { attributes:true, attributeFilter:["style","class"] });
-    formToggle();
+    radioNames.forEach(name => {
+      total++;
+      const any = formView.querySelector(`input[type="radio"][name="${CSS.escape(name)}"]:checked`);
+      if(any) done++;
+    });
+
+    updateProgressUI(done, total);
   }
 
-  // escapeHtml כבר קיים בתוך הסקריפט המקורי; אם לא — נשתמש בפוליבק בטוח.
-  function escapeHtml(s){
-    try{
-      // אם קיימת פונקציה גלובלית של המקור — נשתמש בה
-      if(typeof window.escapeHtml === "function") return window.escapeHtml(s);
-    }catch(_){}
-    return String(s ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
+  function attachAutosave(){
+    if(autosaveAttached) return;
+    autosaveAttached = true;
+    const formView = document.getElementById("formView");
+    if(!formView) return;
+    formView.addEventListener("input", () => { scheduleSave(); updateProgress(); }, { capture:true });
+    formView.addEventListener("change", () => { scheduleSave(); updateProgress(); }, { capture:true });
   }
 
-  // PWA: register SW (לא חובה)
-  async function maybeRegisterSW(){
-    try{
-      if(!("serviceWorker" in navigator)) return;
-      await navigator.serviceWorker.register("./sw.js");
-    }catch(e){
-      // שקט
+  function setFieldMode(on){
+    document.body.classList.toggle("fieldMode", !!on);
+    localStorage.setItem(LS_FIELD_MODE, on ? "1" : "0");
+    const t = $("toggleFieldMode");
+    if(t) t.checked = !!on;
+  }
+
+  function deriveCaseName(){
+    const candidates = ["insuredName","policyHolder","claimantName","clientName","insured_name","שםמבוטח","שם_מבוטח","address","propertyAddress","siteAddress","כתובת"];
+    for(const key of candidates){
+      const el = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
+      const v = (el?.value || "").trim();
+      if(v && v.length >= 3) return v;
     }
+    return "";
+  }
+
+  function renameCaseFromForm(){
+    const id = getActiveCaseId();
+    if(!id) return;
+    const name = deriveCaseName();
+    if(!name) return;
+    updateIndexMeta(id, { name });
+    const meta = loadIndex().find(x => x.id === id);
+    if(meta){
+      $("topTitle").textContent = meta.name;
+      $("pillCase").textContent = meta.name;
+    }
+    renderCases();
+  }
+
+  function renderCases(){
+    const list = $("caseList");
+    if(!list) return;
+    const idx = loadIndex();
+
+    if(!idx.length){
+      list.innerHTML = `<div class="muted">אין תיקים עדיין. לחץ “תיק חדש”.</div>`;
+      return;
+    }
+
+    const active = getActiveCaseId();
+    list.innerHTML = "";
+
+    idx.forEach(meta => {
+      const row = document.createElement("div");
+      row.className = "caseRow";
+      const isActive = meta.id === active;
+      const upd = meta.updatedAt ? new Date(meta.updatedAt).toLocaleString("he-IL") : "";
+
+      row.innerHTML = `
+        <div class="meta">
+          <div class="name">${escapeHtmlSafe(meta.name || "תיק ללא שם")}${isActive ? " • (פעיל)" : ""}</div>
+          <div class="sub">עודכן: ${escapeHtmlSafe(upd)}</div>
+        </div>
+        <div class="actions">
+          <button class="smallBtn" type="button" data-open="${meta.id}">פתח</button>
+          <button class="smallBtn" type="button" data-export="${meta.id}">יצוא</button>
+          <button class="smallBtn danger" type="button" data-del="${meta.id}">מחק</button>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+
+    list.onclick = (e) => {
+      const btn = e.target?.closest("button");
+      if(!btn) return;
+      const openId = btn.getAttribute("data-open");
+      const expId = btn.getAttribute("data-export");
+      const delId = btn.getAttribute("data-del");
+
+      if(openId){
+        openCase(openId);
+      }else if(expId){
+        exportCase(expId);
+      }else if(delId){
+        if(confirm("למחוק את התיק? זה בלתי הפיך.")){
+          deleteCase(delId);
+          toast("תיק נמחק");
+          renderCases();
+          if(!getActiveCaseId()) showDashboard();
+        }
+      }
+    };
+  }
+
+  function openCase(id){
+    setActiveCaseId(id);
+    showCase(id);
+    toast("תיק נטען");
+    $("proSide")?.classList.remove("open");
+  }
+
+  function createNewCase(){
+    const id = uid();
+    const idx = loadIndex();
+    idx.unshift({ id, name:"תיק חדש", createdAt: nowISO(), updatedAt: nowISO() });
+    saveIndex(idx);
+    setActiveCaseId(id);
+    localStorage.setItem(caseKey(id), JSON.stringify({}));
+    renderCases();
+    openCase(id);
+    toast("נוצר תיק חדש");
+  }
+
+  function escapeHtmlSafe(s){
+    try{ if(typeof window.escapeHtml === "function") return window.escapeHtml(s); }catch(_){}
+    return String(s ?? "")
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  }
+
+  async function maybeRegisterSW(){
+    try{ if(!("serviceWorker" in navigator)) return; await navigator.serviceWorker.register("./sw.js"); }catch(_){}
   }
 
   window.addEventListener("DOMContentLoaded", () => {
-    buildNav();
+    $("btnNewCase")?.addEventListener("click", createNewCase);
+    $("dashNewCase")?.addEventListener("click", createNewCase);
+    $("btnDashboard")?.addEventListener("click", () => { setActiveCaseId(""); showDashboard(); renderCases(); });
+    $("btnToggleSide")?.addEventListener("click", () => $("proSide")?.classList.toggle("open"));
+    $("btnNext")?.addEventListener("click", stepNext);
+    $("btnPrev")?.addEventListener("click", stepPrev);
+
+    $("btnExportCase")?.addEventListener("click", () => { const id = getActiveCaseId(); if(id) exportCase(id); });
+    $("btnDeleteCase")?.addEventListener("click", () => {
+      const id = getActiveCaseId();
+      if(!id) return;
+      if(confirm("למחוק את התיק הפעיל? זה בלתי הפיך.")){
+        deleteCase(id);
+        toast("תיק נמחק");
+        renderCases();
+        showDashboard();
+      }
+    });
+
+    const fm = localStorage.getItem(LS_FIELD_MODE) === "1";
+    setFieldMode(fm);
+    $("toggleFieldMode")?.addEventListener("change", (e) => setFieldMode(!!e.target.checked));
+
+    document.addEventListener("change", () => {
+      clearTimeout(renameCaseFromForm._t);
+      renameCaseFromForm._t = setTimeout(renameCaseFromForm, 900);
+    }, { capture:true });
+
+    renderCases();
+
+    const active = getActiveCaseId();
+    if(active) showCase(active);
+    else showDashboard();
+
     maybeRegisterSW();
   });
+
 })();
